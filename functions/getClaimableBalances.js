@@ -1,32 +1,25 @@
-// File: functions/getClaimableBalances.js (Netlify ke liye sahi kiya gaya)
+// File: functions/getClaimableBalances.js (Constructor Error Fixed)
 
-const { Keypair, Horizon } = require('stellar-sdk');
+// *** YAHAN BADLAV KIYA GAYA HAI: Horizon ki jagah seedha Server import kiya gaya hai ***
+const { Keypair, Server } = require('stellar-sdk'); 
 const { mnemonicToSeedSync } = require('bip39');
 const { derivePath } = require('ed25519-hd-key');
 const axios = require('axios');
 
-// Netlify ke handler ka format
 exports.handler = async (event, context) => {
-    // Sirf POST requests ko allow karein
     if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            body: JSON.stringify({ message: 'Method Not Allowed' })
-        };
+        return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
     }
 
     try {
-        // Vercel ka 'req.body' Netlify mein 'event.body' hota hai (aur use parse karna padta hai)
         const { mnemonic } = JSON.parse(event.body);
         if (!mnemonic) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ success: false, error: "Keyphrase is required." })
-            };
+            return { statusCode: 400, body: JSON.stringify({ success: false, error: "Keyphrase is required." }) };
         }
         
-        const server = new Horizon.Server("https://api.mainnet.minepi.com", {
-            httpClient: axios.create({ timeout: 20000 }) // Timeout thoda kam kiya
+        // *** YAHAN BADLAV KIYA GAYA HAI: new Horizon.Server ki jagah new Server() ka istemal kiya gaya hai ***
+        const server = new Server("https://api.mainnet.minepi.com", {
+            httpClient: axios.create({ timeout: 20000 })
         });
 
         const createKeypairFromMnemonic = (m) => {
@@ -42,7 +35,6 @@ exports.handler = async (event, context) => {
         
         const balances = response.records.map(r => ({ id: r.id, amount: r.amount, asset: "PI" }));
 
-        // Vercel ka 'res.status().json()' Netlify mein is tarah return hota hai
         return {
             statusCode: 200,
             body: JSON.stringify({ success: true, balances, publicKey: keypair.publicKey() })
@@ -62,7 +54,6 @@ exports.handler = async (event, context) => {
         }
         
         return {
-            // Success response mein error bhejein taaki front-end use dikha sake
             statusCode: 200, 
             body: JSON.stringify({ success: false, error: detailedError })
         };
