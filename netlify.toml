@@ -1,4 +1,18 @@
+# File: netlify.toml
+
 [build]
-  functions = "functions"
-  publish = "."
+  # Yah command Netlify ko batata hai ki deploy se pehle kya chalana hai.
+  command = "npm run build"
   
+  # Yahan bataya gaya hai ki functions kis folder mein hain.
+  functions = "netlify/functions"
+  
+  # Yah aapki website ka main folder hai jahan index.html hai.
+  # "." ka matlab root directory hai.
+  publish = "."
+
+# Yah rule front-end se aane wali request ko function tak pahunchata hai.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
